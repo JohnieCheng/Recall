@@ -84,6 +84,13 @@ open -a Xcode Recall.xcodeproj
 ```bash
 xcodebuild -project Recall.xcodeproj -scheme Recall -configuration Release build
 ```
+- 产物位于 `~/Library/Developer/Xcode/DerivedData/Recall-*/Build/Products/Release/Recall.app`。
+
+## 运行测试
+
+```bash
+swift test
+```
 
 ## 技术要点
 

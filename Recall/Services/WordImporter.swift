@@ -2,37 +2,29 @@ import Foundation
 import UniformTypeIdentifiers
 
 struct WordImporter {
-
-    /// 解析 CSV 文件内容，返回单词列表
     static func parseCSV(url: URL) throws -> [Word] {
         let content = try String(contentsOf: url, encoding: .utf8)
         return try parseCSV(content: content)
     }
 
-    /// 解析 CSV 字符串，返回单词列表
-    /// 格式: word,phonetic,partOfSpeech,definition,collocation
     static func parseCSV(content: String) throws -> [Word] {
         var lines = content
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
-        // 去掉 BOM 头
+        // Remove BOM for Excel compatibility
         if let first = lines.first, first.hasPrefix("\u{FEFF}") {
             lines[0] = String(first.dropFirst())
         }
 
-        guard lines.count >= 2 else {
-            throw ImportError.emptyFile
-        }
+        guard lines.count >= 2 else { throw ImportError.emptyFile }
 
-        // 验证表头
         let header = lines.removeFirst()
             .components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
 
-        guard header.contains("word"),
-              header.contains("definition") else {
+        guard header.contains("word"), header.contains("definition") else {
             throw ImportError.invalidHeader
         }
 
@@ -46,7 +38,7 @@ struct WordImporter {
 
         var words: [Word] = []
 
-        for (_, line) in lines.enumerated() {
+        for line in lines {
             let cols = parseCSVLine(line)
             guard cols.count > max(wordIdx, defIdx) else { continue }
 
@@ -57,7 +49,6 @@ struct WordImporter {
             let partOfSpeech = posIdx.map { cols[safe: $0]?.trimmingCharacters(in: .whitespaces) ?? "" } ?? ""
             let definition = cols[defIdx].trimmingCharacters(in: .whitespaces)
 
-            // 支持新旧两种格式
             if let eIdx = enCollIdx, let zIdx = zhCollIdx {
                 let enColl = cols[safe: eIdx]?.trimmingCharacters(in: .whitespaces) ?? ""
                 let zhColl = cols[safe: zIdx]?.trimmingCharacters(in: .whitespaces) ?? ""
@@ -68,14 +59,10 @@ struct WordImporter {
             }
         }
 
-        if words.isEmpty {
-            throw ImportError.noWordsFound
-        }
-
+        if words.isEmpty { throw ImportError.noWordsFound }
         return words
     }
 
-    /// 手动解析带引号的 CSV 行（处理逗号、引号转义）
     private static func parseCSVLine(_ line: String) -> [String] {
         var result: [String] = []
         var current = String()
@@ -102,9 +89,9 @@ struct WordImporter {
 
         var errorDescription: String? {
             switch self {
-            case .emptyFile: return "文件为空"
-            case .invalidHeader: return "CSV 表头缺少 word 或 definition 列"
-            case .noWordsFound: return "未找到有效单词"
+            case .emptyFile: return L10n.importFailed
+            case .invalidHeader: return "CSV must contain 'word' and 'definition' columns"
+            case .noWordsFound: return "No valid words found"
             }
         }
     }

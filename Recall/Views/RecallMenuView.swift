@@ -31,7 +31,7 @@ struct RecallMenuView: View {
             Button(L10n.menuQuit) { NSApplication.shared.terminate(nil) }
         }
         .padding(8)
-        .id(manager.languageVersion) // 切换语言时强制刷新
+        .id(manager.languageVersion)
     }
 
     @ViewBuilder

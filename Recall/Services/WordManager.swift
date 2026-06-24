@@ -1,8 +1,6 @@
 import Foundation
 import Combine
 
-// MARK: - Word Manager
-
 @MainActor
 class WordManager: ObservableObject {
     static let shared = WordManager()
@@ -16,12 +14,10 @@ class WordManager: ObservableObject {
     }
     @Published var languageVersion = 0
 
-    /// 已启用的自定义词库单词数
     var enabledCustomWordCount: Int {
         customLibraries.filter(\.enabled).reduce(0) { $0 + $1.words.count }
     }
 
-    /// 所有已启用的自定义单词（只读，供 UI 查看）
     var enabledCustomWords: [Word] {
         customLibraries.filter(\.enabled).flatMap(\.words)
     }
@@ -29,7 +25,6 @@ class WordManager: ObservableObject {
     private var timer: Timer?
     private var backlog: [Word] = []
 
-    // MARK: - UserDefaults keys
     private let intervalKey = "notificationInterval"
     private let speakEnabledKey = "speakEnabled"
     private let librariesKey = "customLibraries"
@@ -42,7 +37,7 @@ class WordManager: ObservableObject {
         didSet { UserDefaults.standard.set(speakEnabled, forKey: speakEnabledKey) }
     }
 
-    private init() {
+    init() {
         notificationInterval = UserDefaults.standard.double(forKey: intervalKey).nonZero ?? 3600
         speakEnabled = UserDefaults.standard.object(forKey: speakEnabledKey) as? Bool ?? true
         loadHistory()
@@ -53,21 +48,25 @@ class WordManager: ObservableObject {
         NotificationCenter.default.addObserver(
             forName: .languageDidChange, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.languageVersion += 1
+            DispatchQueue.main.async {
+                self?.languageVersion += 1
+            }
         }
     }
 
+    var ud: UserDefaults = .standard
+
     // MARK: - Library Persistence
 
-    private func loadLibraries() {
-        guard let data = UserDefaults.standard.data(forKey: librariesKey),
+    func loadLibraries() {
+        guard let data = ud.data(forKey: librariesKey),
               let libs = try? JSONDecoder().decode([CustomLibrary].self, from: data) else { return }
         customLibraries = libs
     }
 
     private func saveLibraries() {
         if let data = try? JSONEncoder().encode(customLibraries) {
-            UserDefaults.standard.set(data, forKey: librariesKey)
+            ud.set(data, forKey: librariesKey)
         }
     }
 
@@ -101,7 +100,7 @@ class WordManager: ObservableObject {
 
     // MARK: - Word Selection
 
-    private func buildBacklog() {
+    func buildBacklog() {
         let all = enabledCustomWords.shuffled()
         let unlearned = all.filter { !learnedWords.contains($0.id) }
         let learned = all.filter { learnedWords.contains($0.id) }

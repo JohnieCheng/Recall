@@ -14,7 +14,6 @@ final class SpeechEngine: SpeechEngineProtocol {
     private init() {}
 
     func speak(text: String) {
-        // 打断上一次朗读
         currentTask?.terminate()
         generation += 1
         let gen = generation
@@ -24,7 +23,7 @@ final class SpeechEngine: SpeechEngineProtocol {
         queue.async { [weak self] in
             guard let self = self else { return }
             for chunk in chunks {
-                if self.generation != gen { return } // 被新请求打断
+                if self.generation != gen { return }
 
                 let task = Process()
                 task.executableURL = URL(fileURLWithPath: "/usr/bin/say")
@@ -45,19 +44,17 @@ final class SpeechEngine: SpeechEngineProtocol {
     }
 }
 
-// MARK: - Language Splitter
-
-private enum LanguageSplitter {
+/// Splits text at English/Chinese boundaries.
+/// Required because `say` silently drops trailing CJK characters after English text.
+enum LanguageSplitter {
     static func split(_ text: String) -> [String] {
         let delimiter = "\u{001E}"
         var s = text
-        // 英文 → 中文边界
         s = s.replacingOccurrences(
             of: "([a-zA-Z])([^a-zA-Z\\u4e00-\\u9fff]*)([\\u4e00-\\u9fff])",
             with: "$1$2\(delimiter)$3",
             options: .regularExpression
         )
-        // 中文 → 英文边界
         s = s.replacingOccurrences(
             of: "([\\u4e00-\\u9fff])([^a-zA-Z\\u4e00-\\u9fff]*)([a-zA-Z])",
             with: "$1$2\(delimiter)$3",
